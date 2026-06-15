@@ -9,6 +9,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v0.160.1 | [`v0.160.1`](https://github.com/chainguard-actions/lowply-build-hugo/tree/v0.160.1) | [`bed9912`](https://github.com/lowply/build-hugo/commit/bed9912b0fca05bc72a85c8df9ab8f529e83bc58) |
+| v0.162.0 | [`v0.162.0`](https://github.com/chainguard-actions/lowply-build-hugo/tree/v0.162.0) | [`fe783b4`](https://github.com/lowply/build-hugo/commit/fe783b48115f9487b7127bea6c8e70a99d6883e4) |
 
 ## Privacy
 
