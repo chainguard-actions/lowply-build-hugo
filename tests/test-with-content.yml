@@ -1,0 +1,68 @@
+name: Test Hugo build with content pages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Hugo site with content pages
+        run: |
+          # Create a Hugo site with content pages
+          cat > "$GITHUB_WORKSPACE/hugo.toml" <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "Content Test Site"
+          EOF
+
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          mkdir -p "$GITHUB_WORKSPACE/layouts"
+          mkdir -p "$GITHUB_WORKSPACE/content/posts"
+
+          cat > "$GITHUB_WORKSPACE/layouts/index.html" <<'EOF'
+          <!DOCTYPE html>
+          <html><body><h1>Home</h1>{{ range .Pages }}<a href="{{ .Permalink }}">{{ .Title }}</a>{{ end }}</body></html>
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/list.html" <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ range .Pages }}<a href="{{ .Permalink }}">{{ .Title }}</a>{{ end }}{{ end }}
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/single.html" <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1><div>{{ .Content }}</div>{{ end }}
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/baseof.html" <<'EOF'
+          <!DOCTYPE html>
+          <html><body>{{ block "main" . }}{{ end }}</body></html>
+          EOF
+
+          # Create a content page (not a draft so it gets published)
+          cat > "$GITHUB_WORKSPACE/content/posts/hello-world.md" <<'EOF'
+          ---
+          title: "Hello World"
+          date: 2024-01-01
+          draft: false
+          ---
+          This is a test post.
+          EOF
+
+      - id: build
+        uses: .
+
+      - name: Assert content pages were built
+        run: |
+          echo "Checking that Hugo built content pages..."
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: public directory not found"
+            exit 1
+          fi
+          echo "public directory contents:"
+          find "$GITHUB_WORKSPACE/public" -type f | sort
+          if [ ! -f "$GITHUB_WORKSPACE/public/index.html" ]; then
+            echo "FAIL: index.html not found in public directory"
+            exit 1
+          fi
+          if [ ! -d "$GITHUB_WORKSPACE/public/posts" ]; then
+            echo "FAIL: posts directory not found in public directory"
+            exit 1
+          fi
+          echo "PASS: Hugo built site with content pages successfully"

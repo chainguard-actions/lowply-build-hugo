@@ -1,0 +1,48 @@
+name: Test basic Hugo build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up minimal Hugo site in workspace
+        run: |
+          # Create a minimal Hugo site structure in the workspace root
+          # The action runs 'hugo' in $GITHUB_WORKSPACE, so we set up files there
+          cat > "$GITHUB_WORKSPACE/hugo.toml" <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "Test Hugo Site"
+          EOF
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          mkdir -p "$GITHUB_WORKSPACE/layouts"
+          cat > "$GITHUB_WORKSPACE/layouts/index.html" <<'EOF'
+          <!DOCTYPE html>
+          <html><body><h1>Home</h1></body></html>
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/list.html" <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ end }}
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/single.html" <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ end }}
+          EOF
+
+      - id: build
+        uses: .
+
+      - name: Assert public directory was created
+        run: |
+          echo "Checking public directory..."
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: public directory was not created by Hugo"
+            exit 1
+          fi
+          echo "Contents of public directory:"
+          ls -la "$GITHUB_WORKSPACE/public/"
+          if [ ! -f "$GITHUB_WORKSPACE/public/index.html" ]; then
+            echo "FAIL: index.html not found in public directory"
+            exit 1
+          fi
+          echo "PASS: Hugo build succeeded"
