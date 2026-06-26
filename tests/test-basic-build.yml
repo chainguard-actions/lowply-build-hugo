@@ -1,0 +1,46 @@
+name: Test basic Hugo build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up minimal Hugo site in workspace
+        run: |
+          # Under act, $GITHUB_WORKSPACE IS the action directory
+          # Fixtures are at $GITHUB_WORKSPACE/tests/fixtures/hugo-site/
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/hugo.toml" "$GITHUB_WORKSPACE/hugo.toml"
+          # Create required content directory
+          mkdir -p "$GITHUB_WORKSPACE/content"
+          echo "Workspace contents:"
+          ls -la "$GITHUB_WORKSPACE/"
+          echo "hugo.toml:"
+          cat "$GITHUB_WORKSPACE/hugo.toml"
+
+      - name: Build Hugo site
+        id: build
+        uses: .
+
+      - name: Assert public directory was created
+        run: |
+          echo "Checking for public directory..."
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: public directory was not created by hugo"
+            ls -la "$GITHUB_WORKSPACE/"
+            exit 1
+          fi
+          echo "PASS: public directory exists"
+
+      - name: Assert sitemap.xml was generated
+        run: |
+          echo "Checking for sitemap.xml..."
+          if [ ! -f "$GITHUB_WORKSPACE/public/sitemap.xml" ]; then
+            echo "FAIL: public/sitemap.xml was not generated"
+            ls -la "$GITHUB_WORKSPACE/public/" || true
+            exit 1
+          fi
+          echo "PASS: sitemap.xml exists"
+          echo "--- sitemap.xml content ---"
+          cat "$GITHUB_WORKSPACE/public/sitemap.xml"

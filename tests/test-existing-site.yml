@@ -1,0 +1,54 @@
+name: Test Hugo build with existing site fixtures
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Copy existing test site fixtures to workspace root
+        run: |
+          # Under act, $GITHUB_WORKSPACE IS the action directory
+          # test/config.toml is already at $GITHUB_WORKSPACE/test/config.toml
+          cp "$GITHUB_WORKSPACE/test/config.toml" "$GITHUB_WORKSPACE/config.toml"
+          cp -r "$GITHUB_WORKSPACE/test/archetypes" "$GITHUB_WORKSPACE/archetypes"
+          mkdir -p "$GITHUB_WORKSPACE/content"
+          echo "Copied config.toml:"
+          cat "$GITHUB_WORKSPACE/config.toml"
+          echo "Workspace contents:"
+          ls -la "$GITHUB_WORKSPACE/"
+
+      - name: Build Hugo site using action
+        id: build
+        uses: .
+
+      - name: Assert public directory was created
+        run: |
+          echo "Checking for public directory..."
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: public directory was not created by hugo"
+            ls -la "$GITHUB_WORKSPACE/"
+            exit 1
+          fi
+          echo "PASS: public directory exists"
+
+      - name: Assert sitemap.xml was generated
+        run: |
+          echo "Checking for sitemap.xml..."
+          if [ ! -f "$GITHUB_WORKSPACE/public/sitemap.xml" ]; then
+            echo "FAIL: public/sitemap.xml was not generated"
+            ls -la "$GITHUB_WORKSPACE/public/" || true
+            exit 1
+          fi
+          echo "PASS: sitemap.xml exists"
+
+      - name: Assert site title appears in RSS feed
+        run: |
+          echo "Checking site title in generated RSS feed..."
+          if ! grep -q "My New Hugo Site" "$GITHUB_WORKSPACE/public/index.xml"; then
+            echo "FAIL: expected site title 'My New Hugo Site' not found in index.xml"
+            cat "$GITHUB_WORKSPACE/public/index.xml" || true
+            exit 1
+          fi
+          echo "PASS: site title found in index.xml"
