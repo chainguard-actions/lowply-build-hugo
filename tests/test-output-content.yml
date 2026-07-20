@@ -1,4 +1,4 @@
-name: Test basic Hugo build
+name: Test Hugo build output content
 on:
   workflow_dispatch:
 jobs:
@@ -21,16 +21,6 @@ jobs:
       - id: build
         uses: .
 
-      - name: Assert public directory was created
-        run: |
-          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
-            echo "FAIL: public/ directory was not created by hugo"
-            ls -la "$GITHUB_WORKSPACE/" || true
-            exit 1
-          fi
-          echo "PASS: public/ directory exists"
-          ls -la "$GITHUB_WORKSPACE/public/"
-
       - name: Assert sitemap.xml was generated
         run: |
           if [ ! -f "$GITHUB_WORKSPACE/public/sitemap.xml" ]; then
@@ -38,4 +28,15 @@ jobs:
             ls -la "$GITHUB_WORKSPACE/public/" || true
             exit 1
           fi
-          echo "PASS: public/sitemap.xml exists"
+          echo "PASS: sitemap.xml exists"
+          cat "$GITHUB_WORKSPACE/public/sitemap.xml"
+
+      - name: Assert sitemap references the base URL
+        run: |
+          SITEMAP="$GITHUB_WORKSPACE/public/sitemap.xml"
+          if ! grep -q "example.org" "$SITEMAP"; then
+            echo "FAIL: expected baseURL 'example.org' not found in sitemap.xml"
+            cat "$SITEMAP"
+            exit 1
+          fi
+          echo "PASS: baseURL found in sitemap.xml"

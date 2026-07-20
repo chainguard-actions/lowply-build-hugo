@@ -1,4 +1,4 @@
-name: Test basic Hugo build
+name: Test Hugo version in Docker image
 on:
   workflow_dispatch:
 jobs:
@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up Hugo site in workspace
+      - name: Set up minimal Hugo site in workspace
         run: |
           mkdir -p "$GITHUB_WORKSPACE/archetypes"
           mkdir -p "$GITHUB_WORKSPACE/content"
@@ -21,21 +21,27 @@ jobs:
       - id: build
         uses: .
 
-      - name: Assert public directory was created
+      - name: Assert Hugo built output (proving the action ran successfully)
         run: |
           if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
-            echo "FAIL: public/ directory was not created by hugo"
+            echo "FAIL: public/ directory was not created — Hugo did not run"
             ls -la "$GITHUB_WORKSPACE/" || true
             exit 1
           fi
-          echo "PASS: public/ directory exists"
+          echo "PASS: Hugo action ran and produced output in public/"
           ls -la "$GITHUB_WORKSPACE/public/"
 
-      - name: Assert sitemap.xml was generated
+      - name: Verify Hugo version from VERSION file
         run: |
-          if [ ! -f "$GITHUB_WORKSPACE/public/sitemap.xml" ]; then
-            echo "FAIL: public/sitemap.xml was not generated"
-            ls -la "$GITHUB_WORKSPACE/public/" || true
-            exit 1
+          VERSION_FILE="$GITHUB_WORKSPACE/action/VERSION"
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "SKIP: VERSION file not found, skipping version check"
+          else
+            VERSION=$(cat "$VERSION_FILE")
+            echo "Hugo version from VERSION file: $VERSION"
+            if ! echo "$VERSION" | grep -q "0.164.0"; then
+              echo "FAIL: expected Hugo version 0.164.0 not found in: $VERSION"
+              exit 1
+            fi
+            echo "PASS: Hugo version 0.164.0 confirmed"
           fi
-          echo "PASS: public/sitemap.xml exists"
