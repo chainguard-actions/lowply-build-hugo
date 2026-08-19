@@ -1,0 +1,39 @@
+name: Test basic Hugo build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up minimal Hugo site in workspace
+        run: |
+          # Create a minimal Hugo config at the workspace root
+          cat > "$GITHUB_WORKSPACE/hugo.toml" <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "My Test Hugo Site"
+          EOF
+
+          # Create minimal layouts so Hugo can render pages
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          printf '{{ .Content }}' > "$GITHUB_WORKSPACE/layouts/_default/single.html"
+          printf '{{ range .Pages }}{{ .Title }}{{ end }}' > "$GITHUB_WORKSPACE/layouts/_default/list.html"
+          printf '{{ range .Site.RegularPages }}{{ .Title }}{{ end }}' > "$GITHUB_WORKSPACE/layouts/index.html"
+
+          # Create a content directory (can be empty)
+          mkdir -p "$GITHUB_WORKSPACE/content"
+
+      - id: build
+        name: Run Hugo build action
+        uses: .
+
+      - name: Assert public directory was created
+        run: |
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: Hugo did not create the public/ output directory"
+            exit 1
+          fi
+          echo "PASS: public/ directory exists"
+          ls -la "$GITHUB_WORKSPACE/public/"

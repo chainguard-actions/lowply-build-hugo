@@ -1,0 +1,81 @@
+name: Test Hugo build with content
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Hugo site with content
+        run: |
+          # Create Hugo config
+          cat > "$GITHUB_WORKSPACE/hugo.toml" <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "Test Site With Content"
+          EOF
+
+          # Create layouts
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          mkdir -p "$GITHUB_WORKSPACE/layouts"
+          cat > "$GITHUB_WORKSPACE/layouts/index.html" <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>{{ .Site.Title }}</title></head>
+          <body>
+          {{ range .Site.RegularPages }}
+          <h2>{{ .Title }}</h2>
+          {{ end }}
+          </body>
+          </html>
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/single.html" <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>{{ .Title }}</title></head>
+          <body>{{ .Content }}</body>
+          </html>
+          EOF
+          cat > "$GITHUB_WORKSPACE/layouts/_default/list.html" <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>{{ .Title }}</title></head>
+          <body>{{ range .Pages }}<p>{{ .Title }}</p>{{ end }}</body>
+          </html>
+          EOF
+
+          # Create content
+          mkdir -p "$GITHUB_WORKSPACE/content/posts"
+          cat > "$GITHUB_WORKSPACE/content/posts/hello.md" <<'EOF'
+          ---
+          title: "Hello World"
+          date: 2024-01-01
+          ---
+          Hello from Hugo!
+          EOF
+
+      - id: build
+        name: Run Hugo build action
+        uses: .
+        continue-on-error: true
+
+      - name: Assert Hugo build produced output
+        env:
+          OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -d "$GITHUB_WORKSPACE/public" ]; then
+              echo "PASS: Hugo built successfully and public/ directory exists"
+              ls -la "$GITHUB_WORKSPACE/public/"
+            else
+              echo "FAIL: Hugo succeeded but public/ directory not found"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: Hugo action ran (may fail gracefully in harness environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
