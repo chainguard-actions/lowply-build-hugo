@@ -1,0 +1,53 @@
+name: Test basic Hugo build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up minimal Hugo site in workspace
+        run: |
+          # Create a minimal Hugo site structure in the workspace
+          mkdir -p content archetypes static layouts/_default
+          cat > hugo.toml <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "My New Hugo Site"
+          EOF
+          # Create a minimal layout so Hugo can build without a theme
+          cat > layouts/_default/baseof.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <body>{{ block "main" . }}{{ end }}</body>
+          </html>
+          EOF
+          cat > layouts/_default/list.html <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ end }}
+          EOF
+          cat > layouts/_default/single.html <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ end }}
+          EOF
+          cat > layouts/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html><body><h1>Home</h1></body></html>
+          EOF
+
+      - name: Run Hugo build action
+        id: build
+        uses: .
+
+      - name: Assert Hugo built the site
+        run: |
+          echo "Checking for Hugo output in public/ directory..."
+          if [ ! -d "public" ]; then
+            echo "FAIL: public/ directory was not created by Hugo"
+            exit 1
+          fi
+          if [ ! -f "public/index.html" ]; then
+            echo "FAIL: public/index.html was not created by Hugo"
+            exit 1
+          fi
+          echo "PASS: Hugo successfully built the site"
+          ls -la public/
