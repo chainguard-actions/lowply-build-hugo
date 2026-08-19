@@ -1,0 +1,91 @@
+name: Test Hugo build with content pages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Hugo site with content
+        run: |
+          # Create a Hugo site with content pages in GITHUB_WORKSPACE
+          mkdir -p "$GITHUB_WORKSPACE/content/posts" \
+                   "$GITHUB_WORKSPACE/layouts/_default" \
+                   "$GITHUB_WORKSPACE/layouts/posts" \
+                   "$GITHUB_WORKSPACE/static"
+
+          cat > "$GITHUB_WORKSPACE/hugo.toml" <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "Test Hugo Site"
+          EOF
+
+          # Base layout
+          cat > "$GITHUB_WORKSPACE/layouts/_default/baseof.html" <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>{{ .Title }}</title></head>
+          <body>{{ block "main" . }}{{ end }}</body>
+          </html>
+          EOF
+
+          # Home page layout
+          cat > "$GITHUB_WORKSPACE/layouts/index.html" <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ end }}
+          EOF
+
+          # Single page layout
+          cat > "$GITHUB_WORKSPACE/layouts/_default/single.html" <<'EOF'
+          {{ define "main" }}<article><h1>{{ .Title }}</h1>{{ .Content }}</article>{{ end }}
+          EOF
+
+          # List layout
+          cat > "$GITHUB_WORKSPACE/layouts/_default/list.html" <<'EOF'
+          {{ define "main" }}<ul>{{ range .Pages }}<li>{{ .Title }}</li>{{ end }}</ul>{{ end }}
+          EOF
+
+          # A sample blog post
+          cat > "$GITHUB_WORKSPACE/content/posts/hello-world.md" <<'EOF'
+          ---
+          title: "Hello World"
+          date: "2024-01-01"
+          ---
+          This is a test post.
+          EOF
+
+      - id: action
+        uses: .
+
+      - name: Assert public directory was created
+        run: |
+          echo "Checking for public/ directory..."
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: public/ directory was not created by Hugo"
+            ls -la "$GITHUB_WORKSPACE/" || true
+            exit 1
+          fi
+          echo "PASS: public/ directory exists"
+
+      - name: Assert post was built
+        run: |
+          echo "Checking for built post..."
+          POST_FILE="$GITHUB_WORKSPACE/public/posts/hello-world/index.html"
+          if [ ! -f "$POST_FILE" ]; then
+            echo "FAIL: post page was not generated at $POST_FILE"
+            find "$GITHUB_WORKSPACE/public" -name "*.html" || true
+            exit 1
+          fi
+          echo "PASS: post page exists"
+          echo "--- Content of post ---"
+          cat "$POST_FILE"
+
+      - name: Assert post content is correct
+        run: |
+          POST_FILE="$GITHUB_WORKSPACE/public/posts/hello-world/index.html"
+          if ! grep -q "Hello World" "$POST_FILE"; then
+            echo "FAIL: post title 'Hello World' not found in output"
+            cat "$POST_FILE"
+            exit 1
+          fi
+          echo "PASS: post title found in output"

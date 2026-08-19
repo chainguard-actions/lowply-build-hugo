@@ -1,0 +1,46 @@
+name: Test basic Hugo build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up minimal Hugo site in workspace
+        run: |
+          # Use config.toml (classic Hugo config format)
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/config.toml" "$GITHUB_WORKSPACE/config.toml"
+          # Copy archetypes
+          mkdir -p "$GITHUB_WORKSPACE/archetypes"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/archetypes/default.md" \
+            "$GITHUB_WORKSPACE/archetypes/default.md"
+          # Copy layouts so Hugo can generate HTML output
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/layouts/_default/baseof.html" \
+            "$GITHUB_WORKSPACE/layouts/_default/baseof.html"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/layouts/_default/list.html" \
+            "$GITHUB_WORKSPACE/layouts/_default/list.html"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/layouts/_default/single.html" \
+            "$GITHUB_WORKSPACE/layouts/_default/single.html"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/layouts/index.html" \
+            "$GITHUB_WORKSPACE/layouts/index.html"
+          # Empty content directory
+          mkdir -p "$GITHUB_WORKSPACE/content"
+          echo "Hugo site scaffold ready"
+          cat "$GITHUB_WORKSPACE/config.toml"
+
+      - id: build
+        uses: .
+
+      - name: Assert Hugo built the site
+        run: |
+          echo "Checking for public directory..."
+          ls -la "$GITHUB_WORKSPACE/" || true
+          if [ -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "PASS: public/ directory was created by Hugo"
+            ls -la "$GITHUB_WORKSPACE/public/" || true
+          else
+            echo "FAIL: public/ directory was not created"
+            exit 1
+          fi
