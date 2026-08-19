@@ -1,0 +1,35 @@
+name: Test basic Hugo build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Copy Hugo site fixtures to workspace root
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/hugo.toml" "$GITHUB_WORKSPACE/hugo.toml"
+          mkdir -p "$GITHUB_WORKSPACE/archetypes"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/archetypes/default.md" "$GITHUB_WORKSPACE/archetypes/default.md"
+          mkdir -p "$GITHUB_WORKSPACE/layouts"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/layouts/index.html" "$GITHUB_WORKSPACE/layouts/index.html"
+          echo "Hugo config:"
+          cat "$GITHUB_WORKSPACE/hugo.toml"
+          echo "Layouts:"
+          ls -la "$GITHUB_WORKSPACE/layouts/"
+
+      - id: build
+        uses: .
+
+      - name: Assert Hugo output was generated
+        run: |
+          echo "Checking for Hugo output in public/..."
+          ls -la "$GITHUB_WORKSPACE/public/" || true
+          if [ ! -f "$GITHUB_WORKSPACE/public/index.html" ]; then
+            echo "FAIL: expected public/index.html not found"
+            exit 1
+          fi
+          echo "PASS: Hugo build produced index.html"

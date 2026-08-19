@@ -1,0 +1,55 @@
+name: Test Hugo version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up minimal Hugo site in workspace
+        run: |
+          # Create a minimal Hugo site so the action can run successfully
+          cat > "$GITHUB_WORKSPACE/hugo.toml" <<'EOF'
+          baseURL = "http://example.org/"
+          languageCode = "en-us"
+          title = "Version Test Site"
+          EOF
+
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          mkdir -p "$GITHUB_WORKSPACE/content"
+
+          cat > "$GITHUB_WORKSPACE/layouts/_default/baseof.html" <<'EOF'
+          <!DOCTYPE html>
+          <html><body>{{ block "main" . }}{{ end }}</body></html>
+          EOF
+
+          cat > "$GITHUB_WORKSPACE/layouts/index.html" <<'EOF'
+          {{ define "main" }}<h1>{{ .Title }}</h1>{{ end }}
+          EOF
+
+      - name: Build Hugo site (verifies action runs successfully)
+        id: build
+        uses: .
+
+      - name: Assert build succeeded and public dir exists
+        run: |
+          if [ ! -d "$GITHUB_WORKSPACE/public" ]; then
+            echo "FAIL: Hugo build did not produce a public directory"
+            exit 1
+          fi
+          echo "PASS: Hugo build completed successfully"
+
+      - name: Assert generated HTML contains expected title
+        run: |
+          INDEX="$GITHUB_WORKSPACE/public/index.html"
+          if [ ! -f "$INDEX" ]; then
+            echo "FAIL: index.html not found"
+            exit 1
+          fi
+          if ! grep -q "Version Test Site" "$INDEX"; then
+            echo "FAIL: index.html does not contain expected title"
+            cat "$INDEX"
+            exit 1
+          fi
+          echo "PASS: index.html contains expected title"

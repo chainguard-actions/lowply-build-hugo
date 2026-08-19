@@ -1,0 +1,48 @@
+name: Test Hugo build with content
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Copy Hugo site with content fixtures to workspace root
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/hugo.toml" "$GITHUB_WORKSPACE/hugo.toml"
+          mkdir -p "$GITHUB_WORKSPACE/archetypes"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/archetypes/default.md" "$GITHUB_WORKSPACE/archetypes/default.md"
+          mkdir -p "$GITHUB_WORKSPACE/layouts/_default"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/layouts/index.html" "$GITHUB_WORKSPACE/layouts/index.html"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/layouts/_default/single.html" "$GITHUB_WORKSPACE/layouts/_default/single.html"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/layouts/_default/list.html" "$GITHUB_WORKSPACE/layouts/_default/list.html"
+          mkdir -p "$GITHUB_WORKSPACE/content/posts"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/content/posts/hello-world.md" "$GITHUB_WORKSPACE/content/posts/hello-world.md"
+          echo "Hugo config:"
+          cat "$GITHUB_WORKSPACE/hugo.toml"
+          echo "Content:"
+          cat "$GITHUB_WORKSPACE/content/posts/hello-world.md"
+          echo "Layouts:"
+          ls -la "$GITHUB_WORKSPACE/layouts/"
+
+      - id: build
+        uses: .
+
+      - name: Assert Hugo output was generated with content
+        run: |
+          echo "Checking for Hugo output..."
+          ls -la "$GITHUB_WORKSPACE/public/" || true
+
+          if [ ! -f "$GITHUB_WORKSPACE/public/index.html" ]; then
+            echo "FAIL: expected public/index.html not found"
+            exit 1
+          fi
+          echo "PASS: Hugo build produced index.html"
+
+          if [ ! -d "$GITHUB_WORKSPACE/public/posts" ]; then
+            echo "FAIL: expected public/posts directory not found"
+            exit 1
+          fi
+          echo "PASS: Hugo build produced posts directory"
