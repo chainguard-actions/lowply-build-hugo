@@ -1,4 +1,4 @@
-name: Test basic Hugo build
+name: Test Hugo build with content pages
 on:
   workflow_dispatch:
 jobs:
@@ -17,16 +17,16 @@ jobs:
           git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
             git remote add origin "$GITHUB_WORKSPACE/.git-remote"
 
-      - name: Set up minimal Hugo site in workspace
+      - name: Set up Hugo site with content pages in workspace
         run: |
-          # Copy fixture Hugo site files into workspace root so hugo can build them
-          cp -r "$GITHUB_WORKSPACE/tests/fixtures/hugo-site/." "$GITHUB_WORKSPACE/"
-          # Ensure public dir doesn't exist yet
+          cp -r "$GITHUB_WORKSPACE/tests/fixtures/hugo-site-with-content/." "$GITHUB_WORKSPACE/"
           rm -rf "$GITHUB_WORKSPACE/public"
           echo "--- Workspace contents after setup ---"
           ls -la "$GITHUB_WORKSPACE/"
           echo "--- layouts directory ---"
           ls -la "$GITHUB_WORKSPACE/layouts/" || echo "no layouts dir"
+          echo "--- content directory ---"
+          find "$GITHUB_WORKSPACE/content" -type f | head -20 || true
 
       - id: build
         uses: .
@@ -42,14 +42,28 @@ jobs:
           echo "--- Contents of public/ ---"
           find "$GITHUB_WORKSPACE/public" -type f | head -30 || true
 
-      - name: Assert index.html was generated
+      - name: Assert content post was rendered
         run: |
-          echo "Checking for public/index.html..."
-          if [ ! -f "$GITHUB_WORKSPACE/public/index.html" ]; then
-            echo "FAIL: public/index.html was not generated"
-            ls -la "$GITHUB_WORKSPACE/public/" || true
+          echo "Checking for rendered post HTML..."
+          # Hugo renders posts under public/posts/hello-world/index.html
+          POST_FILE="$GITHUB_WORKSPACE/public/posts/hello-world/index.html"
+          if [ ! -f "$POST_FILE" ]; then
+            echo "FAIL: rendered post not found at $POST_FILE"
+            echo "Contents of public/:"
+            find "$GITHUB_WORKSPACE/public" -type f | head -20 || true
             exit 1
           fi
-          echo "PASS: public/index.html exists"
+          echo "PASS: post rendered at $POST_FILE"
           echo "--- Content preview ---"
-          head -20 "$GITHUB_WORKSPACE/public/index.html"
+          head -20 "$POST_FILE"
+
+      - name: Assert post content contains expected text
+        run: |
+          echo "Checking post content..."
+          POST_FILE="$GITHUB_WORKSPACE/public/posts/hello-world/index.html"
+          if ! grep -q "Hello World" "$POST_FILE"; then
+            echo "FAIL: 'Hello World' title not found in rendered post"
+            cat "$POST_FILE" || true
+            exit 1
+          fi
+          echo "PASS: post title found in rendered HTML"
